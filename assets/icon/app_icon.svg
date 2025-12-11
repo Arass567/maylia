@@ -1,0 +1,25 @@
+<svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Gray background rounded rectangle for the icon base -->
+  <rect x="0" y="0" width="100" height="100" rx="12" fill="#E8E8E8"/>
+
+  <!-- Yellow bottom part of the envelope -->
+  <path d="M0 60 L0 88 C0 94.6274 5.37258 100 12 100 L88 100 C94.6274 100 100 94.6274 100 88 L100 60 L50 78 L0 60 Z" fill="#FFC107"/>
+
+  <!-- White top opening of the envelope -->
+  <path d="M0 50 L100 50 L100 60 L50 78 L0 60 Z" fill="#FFFFFF"/>
+
+  <!-- Yellow body of the bird -->
+  <path d="M30 35 C30 25 40 20 50 20 C60 20 70 25 70 35 C70 40 65 45 60 50 C55 55 45 55 35 50 C25 45 25 40 30 35 Z" fill="#FFC107"/>
+
+  <!-- Orange wing and belly of the bird -->
+  <path d="M35 45 C38 50 45 55 55 55 C60 55 65 50 65 45 C60 40 50 35 40 40 Z" fill="#F97316"/>
+
+  <!-- Orange beak of the bird -->
+  <path d="M70 30 L78 33 L70 36 Z" fill="#F97316"/>
+
+  <!-- Outer black part of the bird's eye -->
+  <circle cx="60" cy="30" r="5" fill="#000000"/>
+
+  <!-- Inner white highlight of the bird's eye -->
+  <circle cx="62" cy="29" r="2" fill="#FFFFFF"/>
+</svg>

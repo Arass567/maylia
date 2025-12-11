@@ -1,0 +1,17 @@
+{
+  "@@locale": "fr",
+  "appTitle": "Smart Mail La Poste",
+  "inbox": "Boîte de réception",
+  "unread": "non lu(s)",
+  "allEmails": "Tous",
+  "highImportance": "Haute importance",
+  "mediumImportance": "Moyenne importance",
+  "lowImportance": "Faible importance",
+  "refresh": "Actualiser",
+  "delete": "Supprimer",
+  "reply": "Répondre",
+  "send": "Envoyer",
+  "cancel": "Annuler",
+  "error": "Erreur",
+  "success": "Succès"
+}
