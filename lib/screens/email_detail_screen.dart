@@ -664,31 +664,12 @@ ${displayEmail.body}
                     ],
                   ),
                 )
-              : (displayEmail.bodyHtml.isNotEmpty
-                  ? Html(
-                      data: displayEmail.bodyHtml,
-                      style: {
-                        "body": Style(
-                          fontSize: FontSize(14),
-                          lineHeight: LineHeight(1.5),
-                          margin: Margins.zero,
-                          padding: HtmlPaddings.zero,
-                        ),
-                        "p": Style(
-                          margin: Margins.only(bottom: 8),
-                        ),
-                        "a": Style(
-                          color: Theme.of(context).primaryColor,
-                          textDecoration: TextDecoration.underline,
-                        ),
-                      },
-                    )
-                  : Text(
-                      displayEmail.body.isNotEmpty
-                          ? displayEmail.body
-                          : '(Pas de contenu)',
-                      style: const TextStyle(fontSize: 14, height: 1.5),
-                    )),
+              : SelectableText(
+                  displayEmail.body.isNotEmpty
+                      ? displayEmail.body
+                      : '(Pas de contenu)',
+                  style: const TextStyle(fontSize: 14, height: 1.5),
+                ),
         ),
         if (displayEmail.hasAttachments)
           Padding(
