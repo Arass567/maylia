@@ -21,6 +21,8 @@ class EmailService {
   // Flag pour savoir si les credentials ont été chargés
   bool _credentialsLoaded = false;
 
+  String? get userEmail => _email;
+
   EmailService(this._secureStorage);
 
   /// Charge les credentials depuis le stockage sécurisé (lazy loading).

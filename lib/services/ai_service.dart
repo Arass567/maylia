@@ -98,9 +98,9 @@ class AiService {
 
   // Construire le prompt pour l'analyse
   String _buildAnalysisPrompt(String subject, String body) {
-    // Limiter la longueur du body pour économiser des tokens
+    // Limiter la longueur du body pour économiser des tokens (augmenté à 5000 caractères)
     final limitedBody =
-        body.length > 1500 ? '${body.substring(0, 1500)}...' : body;
+        body.length > 5000 ? '${body.substring(0, 5000)}...' : body;
 
     return '''Tu es un assistant IA spécialisé dans l'analyse d'emails.
 
@@ -251,6 +251,37 @@ Format de réponse attendu :
 Ne mets pas de texte avant ou après.''';
 
     return _callClaude(prompt);
+  }
+
+  // Détecter si un email est un spam
+  Future<bool> isEmailSpam(String from, String subject, String body) async {
+    final limitedBody = body.length > 500 ? '${body.substring(0, 500)}...' : body;
+
+    final prompt = '''Tu es un expert en cybersécurité spécialisé dans la détection de spam et de phishing.
+Analyse l'email suivant (expéditeur, sujet, corps) et détermine s'il s'agit d'un spam ou d'un email légitime.
+
+Critères pour le SPAM :
+- Offres commerciales non sollicitées
+- Demandes suspectes d'argent ou d'informations personnelles
+- Contenu générique, impersonnel
+- Fautes de grammaire ou d'orthographe grossières
+- Expéditeur inconnu ou suspect
+
+EMAIL A ANALYSER :
+Expéditeur : $from
+Sujet : $subject
+Corps (extrait) : $limitedBody
+
+Ta réponse doit être UNIQUEMENT le mot "SPAM" si tu penses que c'est un spam, ou "OK" si tu penses que c'est un email légitime. Ne retourne rien d'autre.''';
+
+    try {
+      final response = await _callClaude(prompt);
+      // Réponse attendue : "SPAM" ou "OK"
+      return response.trim().toUpperCase() == 'SPAM';
+    } catch (e) {
+      print('⚠️ Erreur détection spam, email considéré comme sûr par défaut: $e');
+      return false; // En cas d'erreur, on ne classe pas comme spam par sécurité
+    }
   }
 
   // Méthode générique pour appeler Claude

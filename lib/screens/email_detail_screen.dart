@@ -1,7 +1,9 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_html/flutter_html.dart';
 import '../models/email_model.dart';
 import '../providers/email_providers.dart';
 import '../widgets/ai_writer_dialog.dart';
@@ -9,6 +11,7 @@ import '../widgets/move_email_sheet.dart';
 import '../services/gatekeeper_service.dart';
 import '../services/perplexity_service.dart';
 import 'package:share_plus/share_plus.dart' show Share;
+import '../theme/app_theme_2025.dart';
 
 class EmailDetailScreen extends ConsumerStatefulWidget {
   final EmailModel email;
@@ -459,6 +462,9 @@ ${displayEmail.body}
   }
 
   Widget _buildHeader() {
+    final emailService = ref.read(emailServiceProvider);
+    final isSenderMe = emailService.userEmail == widget.email.displayEmail;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -519,6 +525,12 @@ ${displayEmail.body}
                 ],
               ),
             ),
+            if (!isSenderMe)
+              IconButton(
+                icon: const Icon(CupertinoIcons.sparkles),
+                tooltip: 'En savoir plus sur l\'expéditeur',
+                onPressed: () => _showSenderContextSheet(context),
+              ),
           ],
         ),
       ],
@@ -585,14 +597,12 @@ ${displayEmail.body}
               if (widget.email.aiImportance != null) ...[
                 _buildInfoChip(
                   'Importance: ${widget.email.aiImportance}',
-                  _getImportanceColor(),
                 ),
                 const SizedBox(width: 8),
               ],
               if (widget.email.aiCategory != null)
                 _buildInfoChip(
                   widget.email.aiCategory!,
-                  Colors.blue,
                 ),
             ],
           ),
@@ -601,17 +611,17 @@ ${displayEmail.body}
     );
   }
 
-  Widget _buildInfoChip(String label, Color color) {
+  Widget _buildInfoChip(String label) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: AppTheme2025.sm, vertical: AppTheme2025.xxs),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(16),
+        color: AppTheme2025.paleCream, // Pale cream background
+        borderRadius: BorderRadius.circular(AppTheme2025.radiusXl), // Very rounded
       ),
       child: Text(
         label,
-        style: TextStyle(
-          color: color,
+        style: const TextStyle(
+          color: Colors.black, // Black text for contrast
           fontWeight: FontWeight.w600,
           fontSize: 12,
         ),
@@ -654,12 +664,31 @@ ${displayEmail.body}
                     ],
                   ),
                 )
-              : Text(
-                  displayEmail.body.isNotEmpty
-                      ? displayEmail.body
-                      : '(Pas de contenu texte)',
-                  style: const TextStyle(fontSize: 14, height: 1.5),
-                ),
+              : (displayEmail.bodyHtml.isNotEmpty
+                  ? Html(
+                      data: displayEmail.bodyHtml,
+                      style: {
+                        "body": Style(
+                          fontSize: FontSize(14),
+                          lineHeight: LineHeight(1.5),
+                          margin: Margins.zero,
+                          padding: HtmlPaddings.zero,
+                        ),
+                        "p": Style(
+                          margin: Margins.only(bottom: 8),
+                        ),
+                        "a": Style(
+                          color: Theme.of(context).primaryColor,
+                          textDecoration: TextDecoration.underline,
+                        ),
+                      },
+                    )
+                  : Text(
+                      displayEmail.body.isNotEmpty
+                          ? displayEmail.body
+                          : '(Pas de contenu)',
+                      style: const TextStyle(fontSize: 14, height: 1.5),
+                    )),
         ),
         if (displayEmail.hasAttachments)
           Padding(
@@ -887,6 +916,146 @@ ${displayEmail.body}
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  void _showSenderContextSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppTheme2025.radiusXl)),
+      ),
+      builder: (context) {
+        return _SenderContextSheetContent(
+          senderName: widget.email.displayFrom,
+          senderEmail: widget.email.displayEmail,
+          perplexityService: ref.read(perplexityServiceProvider),
+        );
+      },
+    );
+  }
+}
+
+class _SenderContextSheetContent extends StatefulWidget {
+  final String senderName;
+  final String senderEmail;
+  final PerplexityService perplexityService;
+
+  const _SenderContextSheetContent({
+    required this.senderName,
+    required this.senderEmail,
+    required this.perplexityService,
+  });
+
+  @override
+  State<_SenderContextSheetContent> createState() =>
+      _SenderContextSheetContentState();
+}
+
+class _SenderContextSheetContentState
+    extends State<_SenderContextSheetContent> {
+  bool _isLoading = true;
+  String? _result;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchContext();
+  }
+
+  Future<void> _fetchContext() async {
+    try {
+      final contextResult = await widget.perplexityService.enrichSenderContext(
+        senderName: widget.senderName,
+        senderEmail: widget.senderEmail,
+      );
+      if (mounted) {
+        setState(() {
+          _result = contextResult;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Impossible de récupérer le contexte : $e';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FractionallySizedBox(
+      heightFactor: 0.6,
+      child: Padding(
+        padding: const EdgeInsets.all(AppTheme2025.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  CupertinoIcons.sparkles,
+                  color: Theme.of(context).primaryColor,
+                ),
+                const SizedBox(width: AppTheme2025.sm),
+                Text(
+                  'Contexte de l\'expéditeur',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                )
+              ],
+            ),
+            const Divider(height: AppTheme2025.lg),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: _isLoading
+                    ? const Center(
+                        key: ValueKey('loading'),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CircularProgressIndicator(),
+                            SizedBox(height: AppTheme2025.md),
+                            Text('Recherche d\'informations...'),
+                          ],
+                        ),
+                      )
+                    : _error != null
+                        ? Center(
+                            key: const ValueKey('error'),
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text(
+                                _error!,
+                                style: const TextStyle(color: Colors.red),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          )
+                        : SingleChildScrollView(
+                            key: const ValueKey('result'),
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              _result ?? 'Aucun résultat.',
+                              style: Theme.of(context).textTheme.bodyLarge,
+                            ),
+                          ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

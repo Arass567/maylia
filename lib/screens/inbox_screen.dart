@@ -10,6 +10,7 @@ import '../widgets/email_card.dart';
 import '../widgets/move_email_sheet.dart';
 import 'email_detail_screen.dart';
 import 'compose_screen.dart';
+import '../theme/app_theme_2025.dart';
 
 class InboxScreen extends ConsumerStatefulWidget {
   const InboxScreen({super.key});
@@ -21,6 +22,19 @@ class InboxScreen extends ConsumerStatefulWidget {
 class _InboxScreenState extends ConsumerState<InboxScreen> {
   String _filterImportance = 'all';
   bool _isRefreshing = false;
+
+  // Pagination pour accès complet aux emails
+  int _currentEmailLimit = 200;
+  bool _isLoadingMore = false;
+
+  // Recherche
+  bool _isSearchMode = false;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  // Tri et filtrage
+  String _sortBy = 'date_desc'; // date_desc, date_asc, sender, subject
+  String _filterBy = 'all'; // all, unread, read, starred, personnel, notification, newsletter
 
   // Sélection multiple
   bool _isSelectionMode = false;
@@ -34,6 +48,12 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
       // Déclencher aussi la synchronisation des mailboxes pour actualiser les compteurs
       ref.read(mailboxesProvider);
     });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   void _toggleSelection(int emailId) {
@@ -69,8 +89,9 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
 
     try {
       final currentMailbox = ref.read(currentMailboxProvider);
-      ref.invalidate(syncMailboxEmailsProvider(currentMailbox));
-      await ref.read(syncMailboxEmailsProvider(currentMailbox).future);
+      final params = {'mailboxPath': currentMailbox, 'limit': _currentEmailLimit};
+      ref.invalidate(syncMailboxEmailsWithLimitProvider(params));
+      await ref.read(syncMailboxEmailsWithLimitProvider(params).future);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -94,6 +115,162 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
         setState(() => _isRefreshing = false);
       }
     }
+  }
+
+  Future<void> _loadMoreEmails() async {
+    if (_isLoadingMore) return;
+
+    setState(() {
+      _isLoadingMore = true;
+      _currentEmailLimit += 200; // Charger 200 emails supplémentaires
+    });
+
+    try {
+      final currentMailbox = ref.read(currentMailboxProvider);
+      final params = {'mailboxPath': currentMailbox, 'limit': _currentEmailLimit};
+      ref.invalidate(syncMailboxEmailsWithLimitProvider(params));
+      await ref.read(syncMailboxEmailsWithLimitProvider(params).future);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ ${_currentEmailLimit} emails chargés'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Erreur: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingMore = false);
+      }
+    }
+  }
+
+  void _toggleSearchMode() {
+    setState(() {
+      _isSearchMode = !_isSearchMode;
+      if (!_isSearchMode) {
+        _searchController.clear();
+        _searchQuery = '';
+      }
+    });
+  }
+
+  void _updateSearchQuery(String query) {
+    setState(() {
+      _searchQuery = query.toLowerCase();
+    });
+  }
+
+  void _showSortFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.sort, size: 28),
+                const SizedBox(width: 12),
+                Text(
+                  'Trier et filtrer',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'TRIER PAR',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.grey,
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: 12),
+            _buildSortOption('Date (récent → ancien)', 'date_desc', Icons.arrow_downward),
+            _buildSortOption('Date (ancien → récent)', 'date_asc', Icons.arrow_upward),
+            _buildSortOption('Expéditeur (A → Z)', 'sender', Icons.person),
+            _buildSortOption('Sujet (A → Z)', 'subject', Icons.subject),
+            const Divider(height: 32),
+            Text(
+              'FILTRER PAR',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.grey,
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: 12),
+            _buildFilterOption('Tous', 'all', Icons.all_inbox),
+            _buildFilterOption('Non lus', 'unread', Icons.mark_email_unread),
+            _buildFilterOption('Lus', 'read', Icons.mark_email_read),
+            _buildFilterOption('Personnel', 'personnel', Icons.person),
+            _buildFilterOption('Notifications', 'notification', Icons.notifications),
+            _buildFilterOption('Newsletters', 'newsletter', Icons.article),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSortOption(String label, String value, IconData icon) {
+    final isSelected = _sortBy == value;
+    return ListTile(
+      leading: Icon(icon, color: isSelected ? Theme.of(context).primaryColor : null),
+      title: Text(
+        label,
+        style: TextStyle(
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: isSelected ? Theme.of(context).primaryColor : null,
+        ),
+      ),
+      trailing: isSelected ? const Icon(Icons.check, color: Colors.green) : null,
+      onTap: () {
+        setState(() => _sortBy = value);
+        Navigator.pop(context);
+      },
+    );
+  }
+
+  Widget _buildFilterOption(String label, String value, IconData icon) {
+    final isSelected = _filterBy == value;
+    return ListTile(
+      leading: Icon(icon, color: isSelected ? Theme.of(context).primaryColor : null),
+      title: Text(
+        label,
+        style: TextStyle(
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: isSelected ? Theme.of(context).primaryColor : null,
+        ),
+      ),
+      trailing: isSelected ? const Icon(Icons.check, color: Colors.green) : null,
+      onTap: () {
+        setState(() => _filterBy = value);
+        Navigator.pop(context);
+      },
+    );
   }
 
   // Resynchronisation complète forcée (vider + tout retélécharger)
@@ -238,6 +415,10 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
     bool withTabs = false,
   }) {
     return AppBar(
+      backgroundColor: AppTheme2025.goldenYellow,
+      foregroundColor: Colors.black, // WCAG AA Contrast
+      iconTheme: const IconThemeData(color: Colors.black), // WCAG AA Contrast
+      actionsIconTheme: const IconThemeData(color: Colors.black), // WCAG AA Contrast
       leading: Builder(
         builder: (context) => IconButton(
           icon: const Icon(Icons.menu),
@@ -247,52 +428,91 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
           },
         ),
       ),
-      title: Column(
-        children: [
-          Text(_getMailboxDisplayName(currentMailbox)),
-          if (withTabs)
-            Text(
-              'Smart Inbox',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
-            )
-          else
-            unreadCount.when(
-              data: (count) => Text(
-                '$count non lu(s)',
-                style: Theme.of(context).textTheme.bodySmall,
+      title: _isSearchMode
+          ? TextField(
+              controller: _searchController,
+              autofocus: true,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Rechercher...',
+                hintStyle: TextStyle(
+                  color: Colors.white.withOpacity(0.8),
+                ),
+                border: InputBorder.none,
               ),
-              loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
+              onChanged: _updateSearchQuery,
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(_getMailboxDisplayName(currentMailbox)),
+                if (withTabs)
+                  Text(
+                    'Smart Inbox',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.white.withOpacity(0.8),
+                          fontWeight: FontWeight.bold,
+                        ),
+                  )
+                else
+                  unreadCount.when(
+                    data: (count) => Text(
+                      '$count non lu(s)',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.white.withOpacity(0.8),
+                          ),
+                    ),
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                  ),
+              ],
             ),
-        ],
-      ),
       actions: [
-        IconButton(
-          icon: const Icon(Icons.auto_awesome),
-          tooltip: 'Actions IA',
-          onPressed: () => _showAiActionsMenu(context),
-        ),
-        IconButton(
-          icon: _isRefreshing
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.refresh),
-          onPressed: _isRefreshing
-              ? null
-              : () {
-                  HapticFeedback.mediumImpact();
-                  _syncEmails();
-                },
-        ),
+        if (!_isSearchMode) ...[
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: 'Rechercher',
+            onPressed: _toggleSearchMode,
+          ),
+          IconButton(
+            icon: const Icon(Icons.filter_list),
+            tooltip: 'Trier et filtrer',
+            onPressed: _showSortFilterSheet,
+          ),
+          IconButton(
+            icon: const Icon(Icons.auto_awesome),
+            tooltip: 'Actions IA',
+            onPressed: () => _showAiActionsMenu(context),
+          ),
+          IconButton(
+            icon: _isRefreshing
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : const Icon(Icons.refresh),
+            onPressed: _isRefreshing
+                ? null
+                : () {
+                    HapticFeedback.mediumImpact();
+                    _syncEmails();
+                  },
+          ),
+        ] else ...[
+          IconButton(
+            icon: const Icon(Icons.close),
+            tooltip: 'Fermer la recherche',
+            onPressed: _toggleSearchMode,
+          ),
+        ],
       ],
       bottom: withTabs
           ? const TabBar(
+              indicatorColor: Colors.white,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white70,
               tabs: [
                 Tab(text: 'Personnel', icon: Icon(Icons.person_outline)),
                 Tab(text: 'Notifs', icon: Icon(Icons.notifications_none)),
@@ -306,27 +526,97 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
   Widget _buildEmailList(AsyncValue<List<EmailModel>> emailsAsync, String? category) {
     return emailsAsync.when(
       data: (emails) {
-        // Filtrer par catégorie si nécessaire
+        // 1. Filtrer par catégorie si nécessaire (Smart Inbox)
         var filteredEmails = emails;
         if (category != null) {
           filteredEmails = emails.where((e) {
-            // 🔥 FIX: Maintenant tous les emails SONT analysés par les règles
-            // On filtre simplement par catégorie
             return e.aiCategory == category;
           }).toList();
+        }
+
+        // 2. Appliquer la recherche
+        if (_searchQuery.isNotEmpty) {
+          filteredEmails = filteredEmails.where((e) {
+            final searchLower = _searchQuery.toLowerCase();
+            return e.displayFrom.toLowerCase().contains(searchLower) ||
+                   e.displayEmail.toLowerCase().contains(searchLower) ||
+                   e.subject.toLowerCase().contains(searchLower) ||
+                   e.body.toLowerCase().contains(searchLower);
+          }).toList();
+        }
+
+        // 3. Appliquer les filtres
+        if (_filterBy != 'all') {
+          filteredEmails = filteredEmails.where((e) {
+            switch (_filterBy) {
+              case 'unread':
+                return !e.isRead;
+              case 'read':
+                return e.isRead;
+              case 'personnel':
+                return e.aiCategory == 'personnel';
+              case 'notification':
+                return e.aiCategory == 'notification';
+              case 'newsletter':
+                return e.aiCategory == 'newsletter';
+              default:
+                return true;
+            }
+          }).toList();
+        }
+
+        // 4. Appliquer le tri
+        switch (_sortBy) {
+          case 'date_desc':
+            filteredEmails.sort((a, b) => b.date.compareTo(a.date));
+            break;
+          case 'date_asc':
+            filteredEmails.sort((a, b) => a.date.compareTo(b.date));
+            break;
+          case 'sender':
+            filteredEmails.sort((a, b) => a.displayFrom.toLowerCase().compareTo(b.displayFrom.toLowerCase()));
+            break;
+          case 'subject':
+            filteredEmails.sort((a, b) => a.subject.toLowerCase().compareTo(b.subject.toLowerCase()));
+            break;
         }
 
         if (filteredEmails.isEmpty) {
           return _buildEmptyState(category);
         }
 
+        // Vérifier s'il y a plus d'emails à charger
+        final currentMailbox = ref.read(currentMailboxProvider);
+        final hasMore = emails.length >= _currentEmailLimit;
+
         return RefreshIndicator(
           onRefresh: _syncEmails,
-          color: Theme.of(context).colorScheme.primary, // Couleur jaune
+          color: Theme.of(context).colorScheme.primary,
           child: ListView.builder(
             padding: const EdgeInsets.all(8),
-            itemCount: filteredEmails.length,
+            itemCount: filteredEmails.length + (hasMore ? 1 : 0), // +1 pour le bouton "Charger plus"
             itemBuilder: (context, index) {
+              // Bouton "Charger plus" à la fin
+              if (hasMore && index == filteredEmails.length) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Center(
+                    child: _isLoadingMore
+                        ? const CircularProgressIndicator()
+                        : ElevatedButton.icon(
+                            onPressed: _loadMoreEmails,
+                            icon: const Icon(Icons.expand_more),
+                            label: Text('Charger plus (${_currentEmailLimit} → ${_currentEmailLimit + 200})'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Theme.of(context).primaryColor,
+                              foregroundColor: Colors.black,
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            ),
+                          ),
+                  ),
+                );
+              }
+
               final email = filteredEmails[index];
               return EmailCard(
                 email: email,
@@ -508,6 +798,86 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
     );
   }
 
+  Future<void> _cleanSpam() async {
+    final aiService = ref.read(aiServiceProvider);
+    final allMailboxes = await ref.read(mailboxesProvider.future);
+    final allEmails = await ref.read(currentMailboxEmailsProvider.future);
+
+    // 1. Trouver le dossier de spam
+    String? spamFolderPath;
+    try {
+      final spamMailbox = allMailboxes.firstWhere((m) {
+        final lowerPath = m.path.toLowerCase();
+        return lowerPath.contains('junk') || lowerPath.contains('spam');
+      });
+      spamFolderPath = spamMailbox.path;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('❌ Dossier "Indésirables" ou "Spam" introuvable.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    // 2. Filtrer les emails à analyser (ceux dans INBOX)
+    final emailsToScan = allEmails.where((e) => e.mailboxPath == 'INBOX').toList();
+
+    if (emailsToScan.isEmpty) {
+       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('✅ Aucun email à analyser dans la boîte de réception.')),
+        );
+      }
+      return;
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('🤖 Analyse de ${emailsToScan.length} emails en cours...'),
+        ),
+      );
+    }
+
+    int spamCount = 0;
+    // 3. Itérer et analyser chaque email
+    for (final email in emailsToScan) {
+      try {
+        final isSpam = await aiService.isEmailSpam(
+          email.displayFrom,
+          email.subject,
+          email.body,
+        );
+
+        if (isSpam) {
+          spamCount++;
+          // Déplacer l'email
+          await ref.read(moveEmailProvider({
+            'emailId': email.id,
+            'targetFolder': spamFolderPath,
+          }).future);
+        }
+      } catch (e) {
+        print('Erreur lors de l\'analyse ou du déplacement de l\'email ${email.id}: $e');
+      }
+    }
+
+    // 4. Afficher le résumé
+    if (mounted) {
+      ScaffoldMessenger.of(context).removeCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✨ Nettoyage terminé. $spamCount spam(s) déplacé(s).'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
   void _showAiActionsMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -581,11 +951,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               onTap: () {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('🧹 Fonctionnalité bientôt disponible!'),
-                  ),
-                );
+                _cleanSpam();
               },
             ),
             const Divider(),

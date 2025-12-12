@@ -8,12 +8,16 @@ class AppTheme2025 {
   // COULEURS
   // ============================================================================
 
-  /// Palette La Poste (nouvelle identité clean)
-  static const Color laPosteYellow = Color(0xFFFFD700); // Jaune La Poste
-  static const Color laPosteBlue = Color(0xFF003DA5);   // Bleu La Poste (secondaire)
-  static const Color blueNight = Color(0xFF1A1A2E);     // Bleu Nuit (texte/contraste)
-  static const Color lightGrey = Color(0xFFF5F5F5);     // Gris clair (fond secondaire)
-  static const Color paleYellow = Color(0xFFFFF9E6);    // Jaune très pâle (bulles utilisateur)
+  /// Nouvelle Palette - Combination No. 140 (Modern Professional Design)
+  static const Color goldenYellow = Color(0xFFF3A257);  // Golden Yellow - Couleur principale
+  static const Color antwarpBlue = Color(0xFF007190);   // Antwarp Blue - Accents
+  static const Color slateColor = Color(0xFF34454C);    // Slate Color - Textes/éléments sombres
+  static const Color lightCream = Color(0xFFFAF8F3);    // Fond beige/crème clair
+  static const Color paleCream = Color(0xFFFFF5E9);     // Crème très pâle (bulles utilisateur)
+
+  // Alias pour compatibilité avec code existant
+  static const Color laPosteYellow = goldenYellow;
+  static const Color laPosteBlue = antwarpBlue;
 
   /// Couleurs sémantiques
   static const Color success = Color(0xFF4CAF50);
@@ -74,40 +78,42 @@ class AppTheme2025 {
 
     // Couleurs
     colorScheme: ColorScheme.fromSeed(
-      seedColor: laPosteYellow,
+      seedColor: goldenYellow,
       brightness: Brightness.light,
-      primary: laPosteYellow,
-      secondary: laPosteBlue,
+      primary: goldenYellow,
+      secondary: antwarpBlue,
       error: error,
       // Contraste WCAG AA garanti
       surface: Colors.white,
-      onSurface: const Color(0xFF1A1A1A), // Contraste 12.63:1
-      onPrimary: Colors.black, // Texte noir sur fond jaune
+      onSurface: slateColor, // Texte Slate Color pour un look moderne
+      onPrimary: Colors.white, // Texte blanc sur fond orange
     ),
 
-    // Fond global
-    scaffoldBackgroundColor: const Color(0xFFFAFAFA), // Quasi-blanc très doux
+    // Fond global - Crème clair pour un look moderne et chaleureux
+    scaffoldBackgroundColor: lightCream, // Beige/crème clair
 
     // Typographie Material 3
     textTheme: _buildTextTheme(Brightness.light),
 
-    // AppBar - Style moderne minimal
+    // AppBar - Style moderne avec fond Golden Yellow
     appBarTheme: const AppBarTheme(
-      centerTitle: false, // Alignement à gauche (moderne)
-      elevation: level0, // Pas d'ombre
-      scrolledUnderElevation: level0, // Pas d'ombre au scroll
-      backgroundColor: Colors.transparent, // Transparent pour effet moderne
-      foregroundColor: Color(0xFF1A1A1A), // Texte noir
+      centerTitle: false,
+      elevation: level0,
+      scrolledUnderElevation: level0,
+      backgroundColor: Colors.transparent, // << NEUTRAL
+      foregroundColor: slateColor, // << Dark text for light background
+      iconTheme: IconThemeData(color: slateColor), // << Dark icons
       surfaceTintColor: Colors.transparent,
     ),
 
-    // Cards - Très arrondies
+    // Cards - Arrondies avec ombres légères pour profondeur
     cardTheme: CardThemeData(
-      elevation: level0, // Pas d'élévation (flat design moderne)
+      elevation: level1, // Légère élévation pour un effet de profondeur
+      shadowColor: Colors.black12, // Ombre très subtile
       color: Colors.white,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(radiusXl), // 24dp - Très arrondi
+        borderRadius: BorderRadius.circular(radiusLg), // 16dp - Arrondi moderne
       ),
       clipBehavior: Clip.antiAlias,
       margin: const EdgeInsets.symmetric(horizontal: md, vertical: xs),
@@ -131,23 +137,23 @@ class AppTheme2025 {
       ),
     ),
 
-    // Floating Action Button - Jaune avec icône noire
+    // Floating Action Button - Golden Yellow avec icône blanche
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
       elevation: level2,
-      backgroundColor: laPosteYellow,
-      foregroundColor: Colors.black, // Icône noire
+      backgroundColor: goldenYellow,
+      foregroundColor: Colors.white, // Icône blanche
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.all(Radius.circular(radiusLg)), // Arrondi au lieu de circulaire pur
       ),
     ),
 
-    // Elevated Button - Jaune moderne
+    // Elevated Button - Golden Yellow moderne
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: laPosteYellow,
-        foregroundColor: Colors.black, // Texte noir
-        elevation: level0, // Flat
-        shadowColor: Colors.transparent,
+        backgroundColor: goldenYellow,
+        foregroundColor: Colors.white, // Texte blanc
+        elevation: level1, // Légère élévation
+        shadowColor: Colors.black12,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusLg), // Très arrondi
         ),
@@ -161,9 +167,10 @@ class AppTheme2025 {
     // Filled Button (même style que elevated)
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        backgroundColor: laPosteYellow,
-        foregroundColor: Colors.black,
-        elevation: level0,
+        backgroundColor: goldenYellow,
+        foregroundColor: Colors.white,
+        elevation: level1,
+        shadowColor: Colors.black12,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusLg),
         ),
@@ -199,12 +206,12 @@ class AppTheme2025 {
       ),
     ),
 
-    // Bottom Navigation
+    // Bottom Navigation - Style moderne
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-      elevation: level0, // Flat moderne
+      elevation: level1, // Légère élévation
       backgroundColor: Colors.white,
-      selectedItemColor: laPosteYellow,
-      unselectedItemColor: Colors.grey,
+      selectedItemColor: goldenYellow, // Icône sélectionnée en Golden Yellow
+      unselectedItemColor: slateColor, // Icônes non sélectionnées en Slate
       type: BottomNavigationBarType.fixed,
     ),
 
@@ -214,11 +221,11 @@ class AppTheme2025 {
       color: Colors.grey[300],
     ),
 
-    // Chip
+    // Chip - Style moderne avec Antwarp Blue pour les badges
     chipTheme: ChipThemeData(
       backgroundColor: Colors.grey[200],
-      selectedColor: laPosteYellow,
-      labelStyle: const TextStyle(fontSize: 12, color: Colors.black),
+      selectedColor: antwarpBlue, // Utilisation d'Antwarp Blue pour les chips sélectionnés
+      labelStyle: TextStyle(fontSize: 12, color: slateColor),
       padding: const EdgeInsets.symmetric(horizontal: sm, vertical: xs),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(radiusFull),
@@ -236,34 +243,35 @@ class AppTheme2025 {
 
     // Couleurs
     colorScheme: ColorScheme.fromSeed(
-      seedColor: laPosteYellow,
+      seedColor: goldenYellow,
       brightness: Brightness.dark,
-      primary: laPosteYellow,
-      secondary: laPosteBlue,
+      primary: goldenYellow,
+      secondary: antwarpBlue,
       error: error,
-      // OLED pure black pour économie batterie
-      surface: Colors.black,
+      // Fond sombre avec Slate Color
+      surface: slateColor,
       onSurface: const Color(0xFFE0E0E0), // Contraste WCAG AA
     ),
 
     // Typographie
     textTheme: _buildTextTheme(Brightness.dark),
 
-    // AppBar
+    // AppBar - Fond Golden Yellow également en mode sombre
     appBarTheme: const AppBarTheme(
-      centerTitle: true,
+      centerTitle: false,
       elevation: level0,
       scrolledUnderElevation: level1,
-      backgroundColor: Colors.black,
-      foregroundColor: Color(0xFFE0E0E0),
+      backgroundColor: goldenYellow,
+      foregroundColor: Colors.white,
+      iconTheme: IconThemeData(color: Colors.white),
     ),
 
-    // Cards
+    // Cards - Slate Color
     cardTheme: CardThemeData(
       elevation: level1,
-      color: blueNight,
+      color: const Color(0xFF2A3740), // Version légèrement plus claire du Slate
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(radiusMd),
+        borderRadius: BorderRadius.circular(radiusLg),
       ),
       clipBehavior: Clip.antiAlias,
     ),
@@ -271,14 +279,14 @@ class AppTheme2025 {
     // Input
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: blueNight,
+      fillColor: const Color(0xFF2A3740),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(radiusMd),
         borderSide: BorderSide.none,
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(radiusMd),
-        borderSide: const BorderSide(color: laPosteYellow, width: 2),
+        borderSide: const BorderSide(color: goldenYellow, width: 2),
       ),
       contentPadding: const EdgeInsets.symmetric(
         horizontal: md,
@@ -289,8 +297,8 @@ class AppTheme2025 {
     // Bottom Navigation
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       elevation: level3,
-      backgroundColor: Colors.black,
-      selectedItemColor: laPosteYellow,
+      backgroundColor: slateColor,
+      selectedItemColor: goldenYellow,
       unselectedItemColor: Colors.white54,
       type: BottomNavigationBarType.fixed,
     ),
@@ -302,7 +310,7 @@ class AppTheme2025 {
 
   static TextTheme _buildTextTheme(Brightness brightness) {
     final baseColor = brightness == Brightness.light
-        ? const Color(0xFF1A1A1A)
+        ? slateColor // Utilisation de Slate Color pour le texte en mode clair
         : const Color(0xFFE0E0E0);
 
     return TextTheme(

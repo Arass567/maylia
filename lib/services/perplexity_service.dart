@@ -108,7 +108,7 @@ class PerplexityService {
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
-          'model': 'llama-3-sonar-small-32k-online', // Modèle rapide et connecté
+          'model': 'sonar-pro', // Modèle optimisé pour la recherche
           'messages': [
             {
               'role': 'system',

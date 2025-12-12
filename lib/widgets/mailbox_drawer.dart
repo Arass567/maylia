@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/mailbox_model.dart';
 import '../providers/email_providers.dart';
+import '../theme/app_theme_2025.dart';
 
 class MailboxDrawer extends ConsumerStatefulWidget {
   const MailboxDrawer({super.key});
@@ -20,11 +21,11 @@ class _MailboxDrawerState extends ConsumerState<MailboxDrawer> {
     final currentMailbox = ref.watch(currentMailboxProvider);
 
     return Drawer(
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme2025.lightCream,
       child: mailboxesAsync.when(
         data: (mailboxes) => _buildDrawerContent(mailboxes, currentMailbox),
         loading: () => const Center(
-          child: CircularProgressIndicator(color: Color(0xFFFFD700)),
+          child: CircularProgressIndicator(color: AppTheme2025.goldenYellow),
         ),
         error: (error, _) => _buildErrorState(error),
       ),
@@ -36,140 +37,72 @@ class _MailboxDrawerState extends ConsumerState<MailboxDrawer> {
     final systemMailboxes = mailboxes.where((m) => _isSystemFolder(m.path)).toList();
     final customMailboxes = mailboxes.where((m) => !_isSystemFolder(m.path)).toList();
 
-    return Column(
+    return ListView(
+      padding: EdgeInsets.zero,
       children: [
-        // Header avec design La Poste
-        _buildHeader(),
+        const SizedBox(height: 50), // Espace pour la barre de statut
 
-        // Liste scrollable
-        Expanded(
-          child: ListView(
+        // === SECTION 1: MA MESSAGERIE ===
+        _buildSectionHeader('MA MESSAGERIE'),
+        ...systemMailboxes.map((mailbox) => _buildMailboxTile(mailbox, currentMailbox)),
+
+        const SizedBox(height: 8),
+
+        // === SECTION 2: MES CATÉGORIES (repliable) ===
+        _buildExpandableSection(
+          title: 'MES CATÉGORIES',
+          isExpanded: _categoriesExpanded,
+          onToggle: () => setState(() => _categoriesExpanded = !_categoriesExpanded),
+        ),
+        if (_categoriesExpanded) ...[
+          _buildCategoryInfo(),
+        ],
+
+        const SizedBox(height: 8),
+
+        // === SECTION 3: MES DOSSIERS (repliable avec bouton +) ===
+        _buildExpandableSection(
+          title: 'MES DOSSIERS',
+          isExpanded: _foldersExpanded,
+          onToggle: () => setState(() => _foldersExpanded = !_foldersExpanded),
+          trailing: IconButton(
+            icon: const Icon(Icons.add, size: 20, color: AppTheme2025.slateColor),
+            onPressed: () => _showCreateMailboxDialog(context, ref),
+            tooltip: 'Créer un dossier',
             padding: EdgeInsets.zero,
-            children: [
-              // === SECTION 1: MA MESSAGERIE ===
-              _buildSectionHeader('MA MESSAGERIE'),
-              ...systemMailboxes.map((mailbox) => _buildMailboxTile(mailbox, currentMailbox)),
-
-              const SizedBox(height: 8),
-
-              // === SECTION 2: MES CATÉGORIES (repliable) ===
-              _buildExpandableSection(
-                title: 'MES CATÉGORIES',
-                isExpanded: _categoriesExpanded,
-                onToggle: () => setState(() => _categoriesExpanded = !_categoriesExpanded),
-              ),
-              if (_categoriesExpanded) ...[
-                _buildCategoryInfo(),
-              ],
-
-              const SizedBox(height: 8),
-
-              // === SECTION 3: MES DOSSIERS (repliable avec bouton +) ===
-              _buildExpandableSection(
-                title: 'MES DOSSIERS',
-                isExpanded: _foldersExpanded,
-                onToggle: () => setState(() => _foldersExpanded = !_foldersExpanded),
-                trailing: IconButton(
-                  icon: const Icon(Icons.add, size: 20),
-                  onPressed: () => _showCreateMailboxDialog(context, ref),
-                  tooltip: 'Créer un dossier',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-              ),
-              if (_foldersExpanded) ...[
-                if (customMailboxes.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Text(
-                      'Aucun dossier personnalisé',
-                      style: TextStyle(color: Colors.grey, fontSize: 14),
-                      textAlign: TextAlign.center,
-                    ),
-                  )
-                else
-                  ...customMailboxes.map((mailbox) => _buildMailboxTile(
-                        mailbox,
-                        currentMailbox,
-                        isCustom: true,
-                      )),
-              ],
-            ],
+            constraints: const BoxConstraints(),
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildHeader() {
-    return DrawerHeader(
-      decoration: const BoxDecoration(
-        color: Color(0xFFFFD700), // Jaune La Poste
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.mail, size: 48, color: Colors.black87),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'laposte.net',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: Colors.black87,
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                    Text(
-                      'assani.raffion@laposte.net',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.black54,
-                          ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
+        if (_foldersExpanded) ...[
+          if (customMailboxes.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text(
+                'Aucun dossier personnalisé',
+                style: TextStyle(color: Colors.grey, fontSize: 14),
+                textAlign: TextAlign.center,
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: () {
-              ref.invalidate(mailboxesProvider);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('🔄 Actualisation des dossiers...'),
-                  duration: Duration(seconds: 1),
-                ),
-              );
-            },
-            icon: const Icon(Icons.refresh, size: 16),
-            label: const Text('Actualiser'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.black87,
-              side: const BorderSide(color: Colors.black87),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            ),
-          ),
+            )
+          else
+            ...customMailboxes.map((mailbox) => _buildMailboxTile(
+                  mailbox,
+                  currentMailbox,
+                  isCustom: true,
+                )),
         ],
-      ),
+      ],
     );
   }
 
   Widget _buildSectionHeader(String title) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
       child: Text(
         title,
-        style: const TextStyle(
-          fontSize: 14,
+        style: TextStyle(
+          fontSize: 12,
           fontWeight: FontWeight.bold,
-          color: Color(0xFFFFD700), // Jaune La Poste
+          color: AppTheme2025.slateColor.withOpacity(0.6),
           letterSpacing: 0.5,
         ),
       ),
@@ -186,22 +119,21 @@ class _MailboxDrawerState extends ConsumerState<MailboxDrawer> {
       onTap: onToggle,
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        color: Colors.grey[100],
         child: Row(
           children: [
             Icon(
               isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
               size: 20,
-              color: Colors.black87,
+              color: AppTheme2025.slateColor.withOpacity(0.8),
             ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(
-                  fontSize: 14,
+                style: TextStyle(
+                  fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: AppTheme2025.slateColor.withOpacity(0.6),
                   letterSpacing: 0.5,
                 ),
               ),
@@ -214,11 +146,11 @@ class _MailboxDrawerState extends ConsumerState<MailboxDrawer> {
   }
 
   Widget _buildCategoryInfo() {
-    return const Padding(
-      padding: EdgeInsets.all(16.0),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Text(
         'Les catégories sont gérées automatiquement dans l\'onglet Smart Inbox (Personnel, Notifs, News)',
-        style: TextStyle(color: Colors.grey, fontSize: 12),
+        style: TextStyle(color: AppTheme2025.slateColor.withOpacity(0.6), fontSize: 12),
         textAlign: TextAlign.center,
       ),
     );
@@ -232,42 +164,38 @@ class _MailboxDrawerState extends ConsumerState<MailboxDrawer> {
     final isSelected = mailbox.path == currentMailbox;
     final displayName = _getMailboxDisplayName(mailbox.path);
 
-    return ListTile(
-      selected: isSelected,
-      selectedColor: const Color(0xFFFFD700), // Couleur primaire (jaune) pour icône et texte
-      selectedTileColor: const Color(0xFFFFF9E6), // Jaune très pâle pour le fond
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16), // Formes arrondies
-      ),
-      leading: Icon(
-        _getMailboxIcon(mailbox),
-        color: isSelected ? const Color(0xFFFFD700) : Colors.black54,
-        size: 22,
-      ),
-      title: Text(
-        displayName,
-        style: TextStyle(
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          color: isSelected ? const Color(0xFF1A1A2E) : Colors.black87,
-          fontSize: 14,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
+      child: ListTile(
+        selected: isSelected,
+        selectedTileColor: AppTheme2025.goldenYellow,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme2025.radiusLg),
         ),
+        leading: Icon(
+          _getMailboxIcon(mailbox),
+          color: isSelected ? Colors.white : AppTheme2025.antwarpBlue,
+          size: 22,
+        ),
+        title: Text(
+          displayName,
+          style: TextStyle(
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            color: isSelected ? Colors.white : AppTheme2025.slateColor,
+            fontSize: 14,
+          ),
+        ),
+        trailing: mailbox.unseenCount > 0
+            ? Badge(
+                label: Text('${mailbox.unseenCount}'),
+                backgroundColor: AppTheme2025.antwarpBlue,
+                textColor: Colors.white,
+              )
+            : null,
+        onTap: () => _selectMailbox(mailbox),
+        onLongPress: isCustom ? () => _showMailboxOptionsDialog(context, ref, mailbox) : null,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
       ),
-      subtitle: mailbox.messageCount > 0
-          ? Text(
-              '${mailbox.messageCount} message(s)',
-              style: const TextStyle(fontSize: 12, color: Colors.black54),
-            )
-          : null,
-      trailing: mailbox.unseenCount > 0
-          ? Badge(
-              label: Text('${mailbox.unseenCount}'),
-              backgroundColor: const Color(0xFFFFD700),
-              textColor: Colors.black87,
-            )
-          : null,
-      onTap: () => _selectMailbox(mailbox),
-      onLongPress: isCustom ? () => _showMailboxOptionsDialog(context, ref, mailbox) : null,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
     );
   }
 

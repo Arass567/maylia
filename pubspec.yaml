@@ -38,6 +38,8 @@ dependencies:
 
   # Utils
   cupertino_icons: ^1.0.6
+  flutter_html: ^3.0.0
+  flutter_widget_from_html: ^0.17.1
 
 dev_dependencies:
   flutter_test:
@@ -59,6 +61,7 @@ flutter:
   assets:
     - .env
     - assets/icon/
+    - assets/images/
 
 flutter_launcher_icons:
   android: true

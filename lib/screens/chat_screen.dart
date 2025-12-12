@@ -6,6 +6,7 @@ import '../models/chat_message.dart';
 import '../models/chat_session.dart' as session_model;
 import '../providers/chat_providers.dart';
 import '../providers/chat_session_providers.dart';
+import '../theme/app_theme_2025.dart';
 import '../widgets/chat_history_drawer.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
@@ -114,105 +115,29 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface, // Adaptatif light/dark
       // Drawer d'historique ChatGPT-like
       drawer: ChatHistoryDrawer(
         onSessionSelected: _loadSession,
         onNewChat: _startNewChat,
       ),
       appBar: AppBar(
-        backgroundColor: theme.colorScheme.surface,
-        elevation: 0,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: Icon(Icons.menu, color: theme.colorScheme.onSurface),
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              Scaffold.of(context).openDrawer();
-            },
-            tooltip: 'Historique des conversations',
-          ),
-        ),
-        title: Row(
-          children: [
-            // Avatar Assistant (simple, sans pulsation)
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFFFFD700), // Jaune La Poste
-              ),
-              child: const Icon(
-                Icons.auto_awesome, // Étincelle
-                color: Colors.black87,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Assistant IA',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  // Afficher le titre de la session active
-                  activeSessionAsync.when(
-                    data: (session) => Text(
-                      session?.title ?? 'Votre messagerie intelligente',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: theme.colorScheme.onSurface.withOpacity(0.6),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    loading: () => Text(
-                      'Votre messagerie intelligente',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: theme.colorScheme.onSurface.withOpacity(0.6),
-                      ),
-                    ),
-                    error: (_, __) => Text(
-                      'Votre messagerie intelligente',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: theme.colorScheme.onSurface.withOpacity(0.6),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+        backgroundColor: AppTheme2025.goldenYellow,
+        foregroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.white),
+        actionsIconTheme: const IconThemeData(color: Colors.white),
+        title: const Text('Assistant IA'),
         actions: [
-          Semantics(
-            button: true,
-            label: 'Réinitialiser la conversation',
-            child: IconButton(
-              icon: Icon(Icons.refresh, color: theme.colorScheme.onSurface),
-              onPressed: () async {
-                HapticFeedback.mediumImpact();
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Réinitialiser la conversation',
+            onPressed: () async {
+              HapticFeedback.mediumImpact();
               final confirm = await showDialog<bool>(
                 context: context,
                 builder: (context) => AlertDialog(
-                  backgroundColor: theme.colorScheme.surface,
-                  title: Text(
-                    'Réinitialiser',
-                    style: TextStyle(color: theme.colorScheme.onSurface),
-                  ),
-                  content: Text(
-                    'Voulez-vous effacer toute la conversation ?',
-                    style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.8)),
-                  ),
+                  title: const Text('Réinitialiser la conversation ?'),
+                  content: const Text(
+                      'Cela effacera l\'historique de la session actuelle.'),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(context, false),
@@ -220,6 +145,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                     ),
                     TextButton(
                       onPressed: () => Navigator.pop(context, true),
+                      style:
+                          TextButton.styleFrom(foregroundColor: Colors.red),
                       child: const Text('Réinitialiser'),
                     ),
                   ],
@@ -231,15 +158,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                 ref.read(sendMessageProvider.notifier).resetConversation();
               }
             },
-            ),
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Messages
-          Expanded(
-            child: messagesAsync.when(
+      body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: const AssetImage('assets/images/chat_background.jpg'),
+            repeat: ImageRepeat.repeat,
+            opacity: 0.1, // Très léger pour ne pas gêner la lecture
+          ),
+        ),
+        child: Column(
+          children: [
+            // Messages
+            Expanded(
+              child: messagesAsync.when(
               data: (messages) {
                 if (messages.isEmpty) {
                   return const Center(
@@ -291,7 +225,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 
           // Champ de saisie
           _buildInputField(chatState),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -301,85 +236,76 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     final isDark = theme.brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1A1A2E) : const Color(0xFFF5F5F5),
+        color: theme.scaffoldBackgroundColor, // Use the scaffold background color
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(0.03),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(25),
-                border: Border.all(
-                  color: const Color(0xFFFFD700).withOpacity(0.3),
-                  width: 1,
+      child: SafeArea( // To avoid system intrusions at the bottom
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: theme.cardColor, // White
+                  borderRadius: BorderRadius.circular(AppTheme2025.radiusXl),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 5,
+                      offset: const Offset(0, 2),
+                    )
+                  ],
                 ),
-              ),
-              child: Semantics(
-                label: 'Zone de texte pour envoyer un message à l\'assistant',
-                textField: true,
                 child: TextField(
                   controller: _messageController,
                   style: TextStyle(color: theme.colorScheme.onSurface),
                   decoration: InputDecoration(
-                    hintText: 'Demandez quelque chose...',
+                    hintText: 'Envoyer un message...',
                     hintStyle: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.5)),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 20,
-                      vertical: 12,
+                      vertical: 14,
                     ),
                   ),
-                  maxLines: null,
+                  minLines: 1,
+                  maxLines: 5, // Allow multiple lines
                   textInputAction: TextInputAction.send,
                   onSubmitted: (_) => _sendMessage(),
                   enabled: !chatState.isLoading,
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          // Bouton envoyer
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFD700), // Jaune La Poste
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFFFD700).withOpacity(0.3),
-                  blurRadius: 8,
-                  spreadRadius: 1,
-                ),
-              ],
-            ),
-            child: Semantics(
-              button: true,
-              label: chatState.isLoading ? 'Envoi en cours' : 'Envoyer le message',
+            const SizedBox(width: 8),
+            // Send Button
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: AppTheme2025.antwarpBlue,
               child: IconButton(
                 icon: chatState.isLoading
                     ? const SizedBox(
-                        width: 20,
-                        height: 20,
+                        width: 24,
+                        height: 24,
                         child: CircularProgressIndicator(
                           color: Colors.white,
-                          strokeWidth: 2,
+                          strokeWidth: 2.5,
                         ),
                       )
-                    : const Icon(Icons.send, color: Colors.black87),
+                    : const Icon(Icons.send, color: Colors.white),
                 onPressed: chatState.isLoading ? null : _sendMessage,
+                tooltip: 'Envoyer',
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -400,84 +326,62 @@ class _MessageBubble extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    // New colors from the mockup
+    final userBubbleColor = isDark ? const Color(0xFF2A3740) : Colors.white;
+    final assistantBubbleColor = isDark ? const Color(0xFF2A3740) : AppTheme2025.slateColor;
+    final assistantTextColor = isDark ? Colors.white.withOpacity(0.9) : Colors.white;
+    final userTextColor = theme.colorScheme.onSurface;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment:
             isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end, // Align to bottom
         children: [
           if (!isUser) ...[
-            // Avatar Assistant
-            Container(
-              width: 36,
-              height: 36,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Color(0xFFFFD700), // Jaune La Poste
-              ),
-              child: const Icon(
+            // Assistant Avatar
+            const CircleAvatar(
+              radius: 16,
+              backgroundColor: AppTheme2025.antwarpBlue,
+              child: Icon(
                 Icons.auto_awesome,
-                color: Colors.black87,
-                size: 18,
+                color: Colors.white,
+                size: 20,
               ),
             ),
             const SizedBox(width: 8),
           ],
-          // Bulle de texte
           Flexible(
             child: Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: isUser
-                    ? (isDark ? const Color(0xFF2A2A3E) : const Color(0xFFFFF9E6))
-                    : (isDark ? const Color(0xFF1A1A2E) : const Color(0xFFF5F5F5)),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isUser
-                      ? const Color(0xFFFFD700).withOpacity(0.3)
-                      : Colors.grey.withOpacity(0.2),
-                  width: 1,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    message.content,
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurface,
-                      fontSize: 15,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    DateFormat('HH:mm').format(message.timestamp),
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurface.withOpacity(0.5),
-                      fontSize: 11,
-                    ),
-                  ),
+                color: isUser ? userBubbleColor : assistantBubbleColor,
+                borderRadius: BorderRadius.circular(AppTheme2025.radiusLg),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 5,
+                    offset: const Offset(0, 2),
+                  )
                 ],
+              ),
+              child: Text(
+                message.content,
+                style: TextStyle(
+                  color: isUser ? userTextColor : assistantTextColor,
+                  fontSize: 15,
+                  height: 1.4,
+                ),
               ),
             ),
           ),
           if (isUser) ...[
             const SizedBox(width: 8),
-            // Avatar utilisateur
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isDark ? const Color(0xFF3A3A4E) : const Color(0xFF1A1A2E),
-              ),
-              child: const Icon(
-                Icons.person,
-                color: Colors.white,
-                size: 20,
-              ),
+            // User Avatar
+            const CircleAvatar(
+              radius: 16,
+              backgroundImage: AssetImage('assets/images/user_avatar.jpg'),
             ),
           ],
         ],

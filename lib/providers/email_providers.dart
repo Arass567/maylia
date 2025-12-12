@@ -648,22 +648,25 @@ final forceFullResyncProvider = FutureProvider.family<void, String>((ref, mailbo
   }
 });
 
-// Provider pour synchroniser les emails d'un dossier spécifique
+// Provider pour synchroniser les emails d'un dossier spécifique avec limite dynamique
 // Version RAPIDE avec classification par règles (sans IA)
-final syncMailboxEmailsProvider = FutureProvider.family<void, String>((ref, mailboxPath) async {
+final syncMailboxEmailsWithLimitProvider = FutureProvider.family<void, Map<String, dynamic>>((ref, params) async {
+  final String mailboxPath = params['mailboxPath'] as String;
+  final int limit = params['limit'] as int? ?? 200;
+
   final emailService = ref.watch(emailServiceProvider);
   final gatekeeperService = ref.watch(gatekeeperServiceProvider);
   final classifier = ref.watch(emailClassifierServiceProvider);
   final isar = ref.watch(isarProvider);
 
   try {
-    print('🔄 SYNCHRONISATION RAPIDE: $mailboxPath (200 derniers)');
+    print('🔄 SYNCHRONISATION RAPIDE: $mailboxPath ($limit derniers)');
     print('⚡ Mode RAPIDE - Avec classification automatique');
 
-    // Récupérer les 200 DERNIERS emails du dossier
+    // Récupérer les emails du dossier avec la limite spécifiée
     final newEmails = await emailService.fetchEmailsFromMailbox(
       mailboxPath,
-      limit: 200, // 200 emails pour avoir l'historique complet
+      limit: limit,
     );
 
     if (newEmails.isEmpty) {
@@ -777,4 +780,10 @@ final syncMailboxEmailsProvider = FutureProvider.family<void, String>((ref, mail
     print('❌ Erreur synchronisation $mailboxPath: $e');
     rethrow;
   }
+});
+
+// Provider pour synchroniser les emails d'un dossier spécifique (compatibilité)
+// Version RAPIDE avec classification par règles (sans IA)
+final syncMailboxEmailsProvider = FutureProvider.family<void, String>((ref, mailboxPath) async {
+  return ref.read(syncMailboxEmailsWithLimitProvider({'mailboxPath': mailboxPath, 'limit': 200}).future);
 });
