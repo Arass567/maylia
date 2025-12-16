@@ -2,6 +2,19 @@ import 'package:isar/isar.dart';
 
 part 'email_model.g.dart';
 
+@embedded
+class Attachment {
+  late String filename;
+  late String contentType; // MIME type (image/png, application/pdf, etc.)
+  late int size; // Taille en bytes
+  String? contentId; // Pour les images inline
+  String? localPath; // Chemin local après téléchargement
+  bool isDownloaded = false;
+
+  // Données brutes de l'attachment (optionnel, pour petit fichiers)
+  List<int>? data;
+}
+
 @collection
 class EmailModel {
   Id id = Isar.autoIncrement;
@@ -23,6 +36,7 @@ class EmailModel {
   late bool isRead;
 
   late bool hasAttachments;
+  List<Attachment> attachments = [];
 
   // Analyse IA
   String? aiResume;
@@ -52,6 +66,7 @@ class EmailModel {
     required DateTime date,
     bool isRead = false,
     bool hasAttachments = false,
+    List<Attachment>? attachments,
     String? aiResume,
     String? aiImportance,
     String? aiCategory,
@@ -69,6 +84,7 @@ class EmailModel {
       ..date = date
       ..isRead = isRead
       ..hasAttachments = hasAttachments
+      ..attachments = attachments ?? []
       ..aiResume = aiResume
       ..aiImportance = aiImportance
       ..aiCategory = aiCategory

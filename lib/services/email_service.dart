@@ -517,6 +517,9 @@ class EmailService {
       body = _stripHtmlTags(bodyHtml);
     }
 
+    // Parser les pièces jointes
+    final attachments = _parseAttachments(message);
+
     return EmailModel.create(
       uid: message.uid ?? 0,
       from: from,
@@ -527,6 +530,7 @@ class EmailService {
       date: date,
       isRead: isRead,
       hasAttachments: hasAttachments,
+      attachments: attachments,
     );
   }
 
@@ -549,6 +553,9 @@ class EmailService {
     const String body = '[Corps non téléchargé - Cliquez pour charger]';
     const String bodyHtml = '';
 
+    // Parser les pièces jointes (métadonnées uniquement)
+    final attachments = _parseAttachments(message);
+
     return EmailModel.create(
       uid: message.uid ?? 0,
       from: from,
@@ -559,6 +566,7 @@ class EmailService {
       date: date,
       isRead: isRead,
       hasAttachments: hasAttachments,
+      attachments: attachments,
     );
   }
 
@@ -774,6 +782,41 @@ class EmailService {
       print('❌ Erreur chargement corps email UID $uid: $e');
       rethrow;
     }
+  }
+
+  // Helper: Parser les pièces jointes d'un message
+  List<Attachment> _parseAttachments(MimeMessage message) {
+    final attachments = <Attachment>[];
+
+    try {
+      final contentInfos = message.findContentInfo();
+
+      for (final info in contentInfos) {
+        // Vérifier si c'est une pièce jointe
+        if (info.contentDisposition?.disposition == ContentDispositionType.attachment ||
+            (info.contentDisposition?.disposition == ContentDispositionType.inline &&
+             info.contentDisposition?.filename != null)) {
+
+          final filename = info.contentDisposition?.filename ?? info.fileName ?? 'attachment';
+          final contentType = info.contentType?.mediaType.text ?? 'application/octet-stream';
+          final size = info.size ?? 0;
+          final contentId = info.contentId;
+
+          final attachment = Attachment()
+            ..filename = filename
+            ..contentType = contentType
+            ..size = size
+            ..contentId = contentId
+            ..isDownloaded = false;
+
+          attachments.add(attachment);
+        }
+      }
+    } catch (e) {
+      print('⚠️ Erreur parsing attachments: $e');
+    }
+
+    return attachments;
   }
 
   // Helper: Retirer les balises HTML
