@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_html/flutter_html.dart';
 import '../models/email_model.dart';
 import '../providers/email_providers.dart';
 import '../widgets/ai_writer_dialog.dart';
@@ -629,9 +628,41 @@ ${displayEmail.body}
     );
   }
 
+  String _stripHtmlTags(String htmlText) {
+    // Enlever les balises HTML
+    String text = htmlText
+        .replaceAll(RegExp(r'<style[^>]*>.*?</style>', caseSensitive: false, dotAll: true), '')
+        .replaceAll(RegExp(r'<script[^>]*>.*?</script>', caseSensitive: false, dotAll: true), '')
+        .replaceAll(RegExp(r'<[^>]+>'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+
+    // Décoder les entités HTML communes
+    text = text
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#39;', "'")
+        .replaceAll('&apos;', "'");
+
+    return text;
+  }
+
   Widget _buildBody() {
     // Utiliser l'email chargé si disponible, sinon l'email original
     final displayEmail = _loadedEmail ?? widget.email;
+
+    // Obtenir le contenu à afficher
+    String contentToDisplay;
+    if (displayEmail.bodyHtml.isNotEmpty) {
+      contentToDisplay = _stripHtmlTags(displayEmail.bodyHtml);
+    } else if (displayEmail.body.isNotEmpty) {
+      contentToDisplay = displayEmail.body;
+    } else {
+      contentToDisplay = '(Pas de contenu)';
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -665,9 +696,7 @@ ${displayEmail.body}
                   ),
                 )
               : SelectableText(
-                  displayEmail.body.isNotEmpty
-                      ? displayEmail.body
-                      : '(Pas de contenu)',
+                  contentToDisplay,
                   style: const TextStyle(fontSize: 14, height: 1.5),
                 ),
         ),
