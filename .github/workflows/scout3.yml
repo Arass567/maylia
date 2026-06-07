@@ -1,0 +1,151 @@
+name: Scout Education Mayotte v3
+on:
+  push:
+    branches: [main]
+    paths: ['trigger_scout.txt']
+jobs:
+  scout:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scout Mayotte Education URLs
+        run: |
+          python3 - <<'PYEOF'
+import urllib.request
+import urllib.error
+import ssl
+import re
+import json
+import sys
+
+ctx = ssl.create_default_context()
+ctx.check_hostname = False
+ctx.verify_mode = ssl.CERT_NONE
+
+def fetch(url, timeout=20):
+    req = urllib.request.Request(url, headers={
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.5',
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=timeout, context=ctx) as r:
+            return r.status, r.read(80000).decode('utf-8', errors='replace'), dict(r.headers)
+    except urllib.error.HTTPError as e:
+        return e.code, '', {}
+    except Exception as e:
+        print(f"  ERROR fetching {url}: {e}", file=sys.stderr)
+        return 0, '', {}
+
+def fetch_img(url, timeout=15):
+    req = urllib.request.Request(url, headers={
+        'User-Agent': 'Mozilla/5.0',
+        'Accept': 'image/webp,image/avif,image/*,*/*',
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=timeout, context=ctx) as r:
+            ct = r.headers.get('content-type', '')
+            data = r.read(300000)
+            return r.status, ct, len(data)
+    except urllib.error.HTTPError as e:
+        return e.code, '', 0
+    except Exception as e:
+        print(f"  ERROR fetching img {url}: {e}", file=sys.stderr)
+        return 0, '', 0
+
+def og_image(html):
+    patterns = [
+        r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']',
+        r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']',
+        r'<meta\s+property=["\']og:image["\'\s][^>]*content=["\']([^"\']+)["\']',
+    ]
+    for p in patterns:
+        m = re.search(p, html, re.I | re.S)
+        if m:
+            return m.group(1).strip()
+    return None
+
+def page_title(html):
+    m = re.search(r'<title[^>]*>([^<]+)</title>', html, re.I)
+    return m.group(1).strip() if m else None
+
+candidates = [
+    # ac-mayotte.fr
+    ("https://www.ac-mayotte.fr/education-a-mayotte", "article", "Académie de Mayotte", "ac-mayotte.fr"),
+    ("https://www.ac-mayotte.fr/education/les-langues-a-mayotte", "article", "Académie de Mayotte", "ac-mayotte.fr"),
+    # lumni.fr  
+    ("https://www.lumni.fr/programme/mayotte", "documentary", "Lumni", "lumni.fr"),
+    ("https://www.lumni.fr/video/l-ecole-a-mayotte-des-defis-a-relever", "documentary", "Lumni", "lumni.fr"),
+    # ina.fr
+    ("https://www.ina.fr/ina-eclaire-actu/mayotte-ecole-education-enfants-scolarisation", "archive", "INA", "ina.fr"),
+    ("https://www.ina.fr/playlist/p-19059-mayotte", "archive", "INA", "ina.fr"),
+    # france culture / radiofrance
+    ("https://www.radiofrance.fr/franceculture/podcasts/les-pieds-sur-terre/mayotte-l-ecole-impossible-5507453", "podcast", "France Culture", "radiofrance.fr"),
+    # culture.gouv.fr
+    ("https://www.culture.gouv.fr/Regions/Dac-Mayotte/Education-artistique-et-culturelle", "article", "DAC Mayotte - Ministère de la Culture", "culture.gouv.fr"),
+    # arte.tv
+    ("https://www.arte.tv/fr/videos/112501-000-A/mayotte-ecole-en-crise/", "documentary", "ARTE", "arte.tv"),
+]
+
+verified = []
+rejected = []
+
+for url, ctype, source_name, source_domain in candidates:
+    print(f"\n=== Testing: {url}")
+    status, html, headers = fetch(url)
+    print(f"  HTTP {status}")
+    
+    if status != 200:
+        rejected.append({
+            "url": url, "httpStatus": status,
+            "rejected_reason": f"HTTP {status}",
+            "sourceName": source_name, "sourceDomain": source_domain
+        })
+        continue
+    
+    title = page_title(html)
+    img_url = og_image(html)
+    print(f"  Title: {title}")
+    print(f"  og:image: {img_url}")
+    
+    img_status, img_ct, img_size_bytes = 0, '', 0
+    if img_url:
+        img_status, img_ct, img_size_bytes = fetch_img(img_url)
+        img_size_kb = round(img_size_bytes / 1024, 1)
+        print(f"  Image: HTTP {img_status} | {img_ct} | {img_size_kb} KB")
+    else:
+        img_size_kb = 0
+    
+    entry = {
+        "url": url,
+        "title": title,
+        "territory": "mayotte",
+        "type": ctype,
+        "sourceName": source_name,
+        "sourceDomain": source_domain,
+        "thumbnailUrl": img_url,
+        "thumbnailStatus": img_status,
+        "thumbnailContentType": img_ct,
+        "thumbnailSizeKb": img_size_kb if img_url else 0,
+        "httpStatus": status,
+    }
+    
+    if img_url and img_status == 200 and img_ct.startswith('image/') and img_size_kb > 5:
+        verified.append(entry)
+        print(f"  => VERIFIED OK")
+    else:
+        if not img_url:
+            reason = "No og:image found"
+        elif img_status != 200:
+            reason = f"og:image HTTP {img_status}"
+        elif not img_ct.startswith('image/'):
+            reason = f"og:image content-type: {img_ct}"
+        else:
+            reason = f"og:image too small: {img_size_kb} KB"
+        entry["rejected_reason"] = reason
+        rejected.append(entry)
+        print(f"  => REJECTED: {reason}")
+
+output = {"verified": verified, "rejected": rejected}
+print("\n\n=== FINAL JSON OUTPUT ===")
+print(json.dumps(output, ensure_ascii=False, indent=2))
+PYEOF
